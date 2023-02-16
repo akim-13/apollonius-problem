@@ -4,74 +4,149 @@ from logging import debug as D
 import pretty_errors
 import turtle
 
+class Point():
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
+class Circle():
+    def __init__(self, centre, r, turtle):
+        self.centre = centre
+        self.x = centre.x
+        self.y = centre.y
+        self.r = r
+        self.turtle = turtle
+
+    def draw(self):
+        t = self.turtle
+        t.penup() 
+        t.setheading(0)
+        t.setpos(self.x, self.y - self.r)
+        t.pendown()
+        t.circle(self.r)
+        t.penup()
+        t.setpos(self.x, self.y)
+        t.pendown()
+
+
 def main():
-    t = []
-    for i in range (5):
-        t.append(turtle.Turtle())
-        t[i].pensize(3)
-        t[i].speed(10)
+    t = create_n_turtles(3)
 
-    c1 = Circle(0, 0, 100)
-    c2 = Circle(200, 200, 50)
-    c3 = Circle(425, -100, 75)
-    circles = [c1, c2, c3]
+    circles = initialize_circles(t)
 
-    draw_circles(circles, t)
+    for circle in circles:
+        circle.draw()
 
-    d_r_12 = find_d_r(c1, c2)
-    d_r_13 = find_d_r(c1, c3)
-    d_r_23 = find_d_r(c2, c3)
-    d_r = min(d_r_12, d_r_13, d_r_23)
+    delta_r = find_radius_for_inflation(circles)
 
-    # infl_c1 and infl_c2 are the ones that are expanded until tangency.
-    infl_c1 = c1
-    infl_c2 = c2
-    infl_c3 = c3
-    if d_r == d_r_13:
-        infl_c2 = c3
-        infl_c3 = c2
-    elif d_r == d_r_23:
-        infl_c1 = c3
-        infl_c3 = c1
+    circles_to_be_inflated = [ infl_tang_c1, infl_tang_c2, infl_c3 ] = match_tangent_circles(circles, delta_r)
 
-    # Inflate all three circles by delta r
-    for i, circle in enumerate(circles):
-        circle.r += d_r
-        t[i].clear()
-    draw_circles(circles, t)
-    D(f"\nd_r = {d_r}\nr1 = {infl_c1.r}, ({infl_c1.x}, {infl_c1.y})\nr2 = {infl_c2.r}, ({infl_c2.x}, {infl_c2.y})")
+    inflate_and_draw_circles(circles_to_be_inflated, delta_r)
 
-    # Find the centre of the circle of inversion
-    k = infl_c1.r/(infl_c1.r + infl_c2.r)
-    x_inv = infl_c1.x + k*(infl_c2.x - infl_c1.x)
-    y_inv = infl_c1.y + k*(infl_c2.y - infl_c1.y)
-
-    D(f"\nx_i = {x_inv}\ny_i = {y_inv}\nr = 300")
-
-    c_inv = Circle(x_inv, y_inv, 300)
-    t[3].pencolor("red")
-    c_inv.draw(t[3])
-
-    infl_c1_inv_x, infl_c1_inv_y = find_inverse_point_x_y_of_tangent_circles(infl_c1, c_inv)
-    print("First line")
-    print(infl_c1_inv_x, infl_c1_inv_y)
-    infl_c2_inv_x, infl_c2_inv_y = find_inverse_point_x_y_of_tangent_circles(infl_c2, c_inv)
-
-    setpos_turtle_wo_drawing(t[0], x_inv, y_inv)
-    t[0].clear()
-    draw_inverted_circle_line(infl_c1_inv_x, infl_c1_inv_y, c_inv.r*2, t[0])
-
-    setpos_turtle_wo_drawing(t[1], x_inv, y_inv)
-    t[1].clear()
-    draw_inverted_circle_line(infl_c2_inv_x, infl_c2_inv_y, c_inv.r*2, t[1])
-
-    infl_c3_inv_x, infl_c3_inv_y = find_inverse_point_x_y(infl_c3, c_inv)
-    infl_c3_inv_r = find_radius_of_inverted_circle(infl_c3, c_inv)
-    c3_inv = Circle(infl_c3_inv_x, infl_c3_inv_y, infl_c3_inv_r)
-    t[2].clear()
-    c3_inv.draw(t[2])
+    # D(f"\nd_r = {d_r}\nr1 = {infl_c1.r}, ({infl_c1.x}, {infl_c1.y})\nr2 = {infl_c2.r}, ({infl_c2.x}, {infl_c2.y})")
+    #
+    # # Find the centre of the circle of inversion
+    # k = infl_c1.r/(infl_c1.r + infl_c2.r)
+    # x_inv = infl_c1.x + k*(infl_c2.x - infl_c1.x)
+    # y_inv = infl_c1.y + k*(infl_c2.y - infl_c1.y)
+    #
+    # D(f"\nx_i = {x_inv}\ny_i = {y_inv}\nr = 300")
+    #
+    # c_inv = Circle(x_inv, y_inv, 300)
+    # t[3].pencolor("red")
+    # c_inv.draw(t[3])
+    #
+    # infl_c1_inv_x, infl_c1_inv_y = find_inverse_point_x_y_of_tangent_circles(infl_c1, c_inv)
+    # print("First line")
+    # print(infl_c1_inv_x, infl_c1_inv_y)
+    # infl_c2_inv_x, infl_c2_inv_y = find_inverse_point_x_y_of_tangent_circles(infl_c2, c_inv)
+    #
+    # setpos_turtle_wo_drawing(t[0], x_inv, y_inv)
+    # t[0].clear()
+    # draw_inverted_circle_line(infl_c1_inv_x, infl_c1_inv_y, c_inv.r*2, t[0])
+    #
+    # setpos_turtle_wo_drawing(t[1], x_inv, y_inv)
+    # t[1].clear()
+    # draw_inverted_circle_line(infl_c2_inv_x, infl_c2_inv_y, c_inv.r*2, t[1])
+    #
+    # infl_c3_inv_x, infl_c3_inv_y = find_inverse_point_x_y(infl_c3, c_inv)
+    # infl_c3_inv_r = find_radius_of_inverted_circle(infl_c3, c_inv)
+    # c3_inv = Circle(infl_c3_inv_x, infl_c3_inv_y, infl_c3_inv_r)
+    # t[2].clear()
+    # c3_inv.draw(t[2])
 
     turtle.done()
+
+
+def initialize_circles(turtles):
+    t = turtles
+    t[0].color("red")
+    c1 = Circle(Point(0, 0), 100, t[0])
+
+    t[1].color("green")
+    c2 = Circle(Point(200, 200), 50, t[1])
+
+    t[2].color("blue")
+    c3 = Circle(Point(425, -100), 75, t[2])
+
+    return [ c1, c2, c3 ]
+
+def create_n_turtles(num_of_turtles):
+    turtles = []
+    for n in range(num_of_turtles):
+        turtles.append(turtle.Turtle())
+        turtles[n].pensize(3)
+        turtles[n].speed(10)
+
+    return turtles
+
+def find_radius_for_inflation(circles):
+    delta_r_0_1 = find_delta_r_between_two_circles(circles[0], circles[1])
+    delta_r_0_2 = find_delta_r_between_two_circles(circles[0], circles[2])
+    delta_r_1_2 = find_delta_r_between_two_circles(circles[1], circles[2])
+
+    min_delta_r = min(delta_r_0_1, delta_r_0_2, delta_r_1_2)
+    return min_delta_r
+
+def find_delta_r_between_two_circles(c1, c2):
+    distance_between_centres = find_distance_between_two_points(c1.centre, c2.centre)
+
+    delta_r = (distance_between_centres - c1.r - c2.r) / 2
+    return delta_r
+
+def find_distance_between_two_points(p1, p2):
+    return math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2)
+
+def match_tangent_circles(circles, delta_r):
+    c1 = circles[0]
+    c2 = circles[1]
+    c3 = circles[2]
+    distance_c1_c2 = find_distance_between_two_points(c1.centre, c2.centre)
+    distance_c1_c3 = find_distance_between_two_points(c1.centre, c3.centre)
+
+    if c1.r + c2.r + delta_r*2 == distance_c1_c2:
+        tang_c1 = c1
+        tang_c2 = c2
+        c3 = c3
+    elif c1.r + c3.r + delta_r*2 == distance_c1_c3:
+        tang_c1 = c1
+        tang_c2 = c3
+        c3 = c2
+    else:
+        tang_c1 = c2
+        tang_c2 = c3
+        c3 = c1
+
+    return tang_c1, tang_c2, c3
+
+def inflate_and_draw_circles(circles, delta_r):
+    for circle in circles:
+        circle.r += delta_r
+        circle.turtle.clear()
+        circle.draw()
+    return
+
 
 def find_radius_of_inverted_circle(c1, c_inv):
     k = abs((c_inv.r**2) / ((c1.x - c_inv.x)**2 + (c1.y - c_inv.y)**2 - c1.r**2))
@@ -108,35 +183,6 @@ def find_inverse_point_x_y(c1, c_inv):
 
     return c1_inv_x, c1_inv_y
 
-def draw_circles(circles, turtles):
-    for i, circle in enumerate(circles): 
-        circle.draw(turtles[i])
-
-def find_d_r(c1, c2):
-    x1 = c1.x
-    x2 = c2.x
-    y1 = c1.y
-    y2 = c2.y
-    distance_between_centres = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-    delta_r = (distance_between_centres - c1.r - c2.r) / 2
-    return delta_r
-
-class Circle():
-    def __init__(self, x, y, r):
-        self.x = x
-        self.y = y
-        self.r = r
-
-    def draw(self, turtle):
-        t = turtle
-        t.penup() 
-        t.setheading(0)
-        t.setpos(self.x, self.y - self.r)
-        t.pendown()
-        t.circle(self.r)
-        t.penup()
-        t.setpos(self.x, self.y)
-        t.pendown()
 
 if __name__ == '__main__':
     pretty_errors.configure(
